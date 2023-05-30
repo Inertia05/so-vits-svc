@@ -43,10 +43,7 @@
 
 + 特征输入更换为 [Content Vec](https://github.com/auspicious3000/contentvec) 的第12层Transformer输出，并兼容4.0分支
 + 更新浅层扩散，可以使用浅层扩散模型提升音质
-+ 增加whisper语音编码器的支持
-+ 增加静态/动态声线融合
-+ 增加响度嵌入
-  
+
 ### 🆕 关于兼容4.0模型的问题
 
 + 可通过修改4.0模型的config.json对4.0的模型进行支持，需要在config.json的model字段中添加speech_encoder字段，具体见下
@@ -73,7 +70,7 @@
 
 **以下编码器需要选择一个使用**
 
-##### **1. 若使用contentvec作为声音编码器（推荐）**
+##### **1. 若使用contentvec作为声音编码器**
 + contentvec ：[checkpoint_best_legacy_500.pt](https://ibm.box.com/s/z1wgl1stco8ffooyatzdwsqn2psd9lrr)
   + 放在`pretrain`目录下
 
@@ -87,13 +84,9 @@ wget -P pretrain/ http://obs.cstcloud.cn/share/obs/sankagenkeshi/checkpoint_best
 + soft vc hubert：[hubert-soft-0d54a1f4.pt](https://github.com/bshall/hubert/releases/download/v0.1/hubert-soft-0d54a1f4.pt)
   + 放在`pretrain`目录下
 
-##### **3. 若使用Whisper-ppg作为声音编码器**
-- download model at [medium.pt](https://openaipublic.azureedge.net/main/whisper/models/345ae4da62f9b3d59415adc60127b97c714f32e89e936602e85993674d08dcb1/medium.pt)
-  - 放在`pretrain`目录下
- 
-##### **4. 若使用OnnxHubert/ContentVec作为声音编码器**
-- download model at [MoeSS-SUBModel](https://huggingface.co/NaruseMioShirakana/MoeSS-SUBModel/tree/main)
-  - 放在`pretrain`目录下
+##### **3. 若使用OnnxHubert/ContentVec作为声音编码器**
+- download model at https://huggingface.co/NaruseMioShirakana/MoeSS-SUBModel/tree/main
+  - Place it under the `pretrain` directory
 
 #### **编码器列表**
 - "vec768l12"
@@ -104,7 +97,6 @@ wget -P pretrain/ http://obs.cstcloud.cn/share/obs/sankagenkeshi/checkpoint_best
 - "vec768l12-onnx"
 - "hubertsoft-onnx"
 - "hubertsoft"
-- "whisper-ppg"
 
 #### **可选项(强烈建议使用)**
 
@@ -173,42 +165,10 @@ dataset_raw
 
 切完之后手动删除过长过短的音频
 
-**如果你使用Whisper-ppg声音编码器进行训练，所有的切片长度必须小于30s**
-
 ### 1. 重采样至44100Hz单声道
 
 ```shell
 python resample.py
-```
-
-#### 注意
-
-虽然本项目拥有重采样、转换单声道与响度匹配的脚本resample.py，但是默认的响度匹配是匹配到0db。这可能会造成音质的受损。而python的响度匹配包pyloudnorm无法对电平进行压限，这会导致爆音。所以建议可以考虑使用专业声音处理软件如`adobe audition`等软件做重采样、转换单声道与响度匹配处理。若使用其他软件做重采样、转换单声道与响度匹配，则可以不运行上述命令。
-
-若手动处理音频，需要以以下文件结构将数据集放入dataset目录即可。若无该目录可以自行创建。
-
-```
-dataset
-└───44k
-    ├───speaker0
-    │   ├───xxx1-xxx1.wav
-    │   ├───...
-    │   └───Lxx-0xx8.wav
-    └───speaker1
-        ├───xx2-0xxx2.wav
-        ├───...
-        └───xxx7-xxx007.wav
-```
-
-可以自定义说话人名称
-
-```
-dataset
-└───44k
-     └───suijiSUI
-           ├───1.wav
-           ├───...
-           └───25788785-20221210-200143-856_01_(Vocals)_0_0.wav
 ```
 
 ### 2. 自动划分训练集、验证集，以及自动生成配置文件
@@ -217,35 +177,15 @@ dataset
 python preprocess_flist_config.py --speech_encoder vec768l12
 ```
 
-speech_encoder拥有四个选择
+speech_encoder拥有三个选择
 
 ```
 vec768l12
 vec256l9
 hubertsoft
-whisper-ppg
 ```
 
 如果省略speech_encoder参数，默认值为vec768l12
-
-**使用响度嵌入**
-
-若使用响度嵌入，需要增加`--vol_aug`参数，比如：
-
-```shell
-python preprocess_flist_config.py --speech_encoder vec768l12 --vol_aug
-```
-
-使用后训练出的模型将匹配到输入源响度，否则为训练集响度。
-
-#### 此时可以在生成的config.json与diffusion.yaml修改部分参数
-
-* `keep_ckpts`：训练时保留最后几个模型，`0`为保留所有，默认只保留最后`3`个
-
-* `all_in_mem`,`cache_all_data`：加载所有数据集到内存中，某些平台的硬盘IO过于低下、同时内存容量 **远大于** 数据集体积时可以启用
-
-* `batch_size`：单次训练加载到GPU的数据量，调整到低于显存容量的大小即可
-
 
 ### 3. 生成hubert与f0
 
@@ -273,6 +213,12 @@ python preprocess_hubert_f0.py --f0_predictor dio --use_diff
 ```
 
 执行完以上步骤后 dataset 目录便是预处理完成的数据，可以删除 dataset_raw 文件夹了
+
+#### 此时可以在生成的config.json与diffusion.yaml修改部分参数
+
+* `keep_ckpts`：训练时保留最后几个模型，`0`为保留所有，默认只保留最后`3`个
+
+* `all_in_mem`：加载所有数据集到内存中，某些平台的硬盘IO过于低下、同时内存容量 **远大于** 数据集体积时可以启用
 
 ## 🏋️‍♀️ 训练
 
@@ -317,19 +263,12 @@ python inference_main.py -m "logs/44k/G_30400.pth" -c "configs/config.json" -n "
 + `-cr` | `--cluster_infer_ratio`：聚类方案占比，范围0-1，若没有训练聚类模型则默认0即可
 + `-eh` | `--enhance`：是否使用NSF_HIFIGAN增强器,该选项对部分训练集少的模型有一定的音质增强效果，但是对训练好的模型有反面效果，默认关闭
 + `-shd` | `--shallow_diffusion`：是否使用浅层扩散，使用后可解决一部分电音问题，默认关闭，该选项打开时，NSF_HIFIGAN增强器将会被禁止
-+ `-usm` | `--use_spk_mix`：是否使用角色融合/动态声线融合
-+ `-lea` | `--loudness_envelope_adjustment`：输入源响度包络替换输出响度包络融合比例，越靠近1越使用输出响度包络
 
 浅扩散设置：
 + `-dm` | `--diffusion_model_path`：扩散模型路径
 + `-dc` | `--diffusion_config_path`：扩散模型配置文件路径
 + `-ks` | `--k_step`：扩散步数，越大越接近扩散模型的结果，默认100
-+ `-od` | `--only_diffusion`：纯扩散模式，该模式不会加载sovits模型，以扩散模型推理
-+ `-se` | `--second_encoding`：二次编码，浅扩散前会对原始音频进行二次编码，玄学选项，有时候效果好，有时候效果差
-
-### 注意！
-
-如果使用`whisper-ppg` speech encoder 进行推理，需要将`--clip`设置为25，`-lg`设置为1。否则将无法正常推理。
++ `-od` | `---only_diffusion`：纯扩散模式，该模式不会加载sovits模型，以扩散模型推理
 
 ## 🤔 可选项
 
@@ -355,51 +294,6 @@ python inference_main.py -m "logs/44k/G_30400.pth" -c "configs/config.json" -n "
   + `inference_main.py`中指定`cluster_infer_ratio`，`0`为完全不使用聚类，`1`为只使用聚类，通常设置`0.5`即可
 
 ### [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/svc-develop-team/so-vits-svc/blob/4.1-Stable/sovits4_for_colab.ipynb) [sovits4_for_colab.ipynb](https://colab.research.google.com/github/svc-develop-team/so-vits-svc/blob/4.1-Stable/sovits4_for_colab.ipynb)
-
-## 🗜️ 模型压缩
-
-生成的模型含有继续训练所需的信息。如果确认不再训练，可以移除模型中此部分信息，得到约 1/3 大小的最终模型。
-
-使用 [compress_model.py](compress_model.py)
-
-```shell
-# 例
-python compress_model.py -c="configs/config.json" -i="logs/44k/G_30400.pth" -o="logs/44k/release.pth"
-```
-
-## 👨‍🔧 声线混合
-
-### 静态声线混合
-
-**参考`webUI.py`文件中，小工具/实验室特性的静态声线融合。**
-
-介绍:该功能可以将多个声音模型合成为一个声音模型(多个模型参数的凸组合或线性组合)，从而制造出现实中不存在的声线 
-**注意：**
-
-1. 该功能仅支持单说话人的模型
-2. 如果强行使用多说话人模型，需要保证多个模型的说话人数量相同，这样可以混合同一个SpaekerID下的声音
-3. 保证所有待混合模型的config.json中的model字段是相同的
-4. 输出的混合模型可以使用待合成模型的任意一个config.json，但聚类模型将不能使用
-5. 批量上传模型的时候最好把模型放到一个文件夹选中后一起上传
-6. 混合比例调整建议大小在0-100之间，也可以调为其他数字，但在线性组合模式下会出现未知的效果
-7. 混合完毕后，文件将会保存在项目根目录中，文件名为output.pth
-8. 凸组合模式会将混合比例执行Softmax使混合比例相加为1，而线性组合模式不会
-
-### 动态声线混合
-
-**参考`spkmix.py`文件中关于动态声线混合的介绍**
-
-角色混合轨道 编写规则：
-
-角色ID : \[\[起始时间1, 终止时间1, 起始数值1, 起始数值1], [起始时间2, 终止时间2, 起始数值2, 起始数值2]]
-
-起始时间和前一个的终止时间必须相同，第一个起始时间必须为0，最后一个终止时间必须为1 （时间的范围为0-1）
-
-全部角色必须填写，不使用的角色填\[\[0., 1., 0., 0.]]即可
-
-融合数值可以随便填，在指定的时间段内从起始数值线性变化为终止数值，内部会自动确保线性组合为1（凸组合条件），可以放心使用
-
-推理的时候使用`--use_spk_mix`参数即可启用动态声线混合
 
 ## 📤 Onnx导出
 

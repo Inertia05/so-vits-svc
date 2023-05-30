@@ -139,7 +139,6 @@ def train(args, initial_global_step, model, optimizer, scheduler, vocoder, loade
                     scaler.scale(loss).backward()
                     scaler.step(optimizer)
                     scaler.update()
-                scheduler.step()
                 
             # log loss
             if saver.global_step % args.train.interval_log == 0:
@@ -171,7 +170,7 @@ def train(args, initial_global_step, model, optimizer, scheduler, vocoder, loade
                 optimizer_save = optimizer if args.train.save_opt else None
                 
                 # save latest
-                saver.save_model(model, optimizer_save, postfix=f'{saver.global_step}')
+                saver.save_model(model, optimizer_save,epoch, postfix=f'{saver.global_step}')
                 last_val_step = saver.global_step - args.train.interval_val
                 if last_val_step % args.train.interval_force_save != 0:
                     saver.delete_model(postfix=f'{last_val_step}')
@@ -191,5 +190,5 @@ def train(args, initial_global_step, model, optimizer, scheduler, vocoder, loade
                 })
                 
                 model.train()
-
+        scheduler.step()
                           

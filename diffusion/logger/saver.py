@@ -103,6 +103,7 @@ class Saver(object):
             self,
             model, 
             optimizer,
+            epoch,
             name='model',
             postfix='',
             to_json=False):
@@ -120,10 +121,12 @@ class Saver(object):
             torch.save({
                 'global_step': self.global_step,
                 'model': model.state_dict(),
+                'epoch': epoch,
                 'optimizer': optimizer.state_dict()}, path_pt)
         else:
             torch.save({
                 'global_step': self.global_step,
+                'epoch': epoch,
                 'model': model.state_dict()}, path_pt)
             
         # to json

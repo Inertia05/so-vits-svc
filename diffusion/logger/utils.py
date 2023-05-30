@@ -110,6 +110,7 @@ def load_model(
     path = os.path.join(expdir, name+postfix)
     path_pt = traverse_dir(expdir, ['pt'], is_ext=False)
     global_step = 0
+    epoch = None
     if len(path_pt) > 0:
         steps = [s[len(path):] for s in path_pt]
         maxstep = max([int(s) if s.isdigit() else 0 for s in steps])
@@ -123,4 +124,5 @@ def load_model(
         model.load_state_dict(ckpt['model'], strict=False)
         if ckpt.get('optimizer') != None:
             optimizer.load_state_dict(ckpt['optimizer'])
-    return global_step, model, optimizer
+            epoch = ckpt.get("epoch")
+    return global_step, model, optimizer, epoch
